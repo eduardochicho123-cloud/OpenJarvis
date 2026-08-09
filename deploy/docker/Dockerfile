@@ -69,6 +69,12 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /app /app
 WORKDIR /app
 
+# Genera ~/.openjarvis/config.toml desde variables de entorno en cada arranque
+# (ver deploy/docker/docker-entrypoint.sh) -- p.ej. para registrar un servidor
+# MCP sin necesitar un volumen persistente.
+COPY deploy/docker/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Run as an unprivileged user — the server needs no root privileges, so dropping
 # them limits the blast radius of a compromise (#565). The app writes only to
 # $HOME (config/cache/state), which is owned by this user.
@@ -80,5 +86,5 @@ USER openjarvis
 
 EXPOSE 8000
 
-ENTRYPOINT ["jarvis"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["serve", "--host", "0.0.0.0", "--port", "8000"]
