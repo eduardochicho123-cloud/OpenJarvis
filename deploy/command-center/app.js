@@ -15,6 +15,7 @@
   let mediaRecorder = null;
   let audioChunks = [];
   let currentSpeechAudio = null;
+  let speechGeneration = 0;
 
   const $ = (id) => document.getElementById(id);
 
@@ -238,6 +239,17 @@
     // de fallos silenciosos. El pulso de la esfera ahora es sintetico
     // (basado en el tiempo de reproduccion), no en el volumen real.
     stopCurrentSpeech();
+    // stopCurrentSpeech() solo corta audio que YA esta sonando. Si dos
+    // respuestas llegan casi juntas, las dos pueden estar todavia esperando
+    // su propia sintesis de voz (fetch a /v1/speech/synthesize) cuando la
+    // segunda hace ese chequeo -- ninguna tiene audioEl todavia, asi que no
+    // hay nada que cortar, y las dos terminan reproduciendose juntas. El
+    // numero de generacion resuelve eso: cada llamada a speak() se anota su
+    // propio numero, y si para cuando termina de sintetizar su audio ya hay
+    // una llamada mas nueva en curso, se descarta en silencio en vez de
+    // reproducirse.
+    const myGeneration = ++speechGeneration;
+    const isCurrent = () => myGeneration === speechGeneration;
 
     let playError = null;
     let blob = null;
@@ -251,6 +263,7 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       blob = await res.blob();
       if (!blob.size) throw new Error('la respuesta llego vacia (0 bytes)');
+      if (!isCurrent()) return; // una respuesta mas nueva ya empezo a hablar
 
       const url = URL.createObjectURL(blob);
       audioEl = new Audio(url);
@@ -302,10 +315,15 @@
       if (currentSpeechAudio && currentSpeechAudio.audioEl === audioEl) {
         currentSpeechAudio = null;
       }
-      orbAmpReset();
-      setOrbState('idle', '');
+      // Si esta llamada quedo obsoleta (una mas nueva ya esta hablando), no
+      // toca el estado de la esfera -- resetearlo a "idle" aca pisaria el
+      // "Hablando..." de la respuesta que si esta sonando.
+      if (isCurrent()) {
+        orbAmpReset();
+        setOrbState('idle', '');
+      }
     }
-    if (playError) {
+    if (playError && isCurrent()) {
       appendMessage('assistant', `(No se pudo reproducir la voz: ${playError})`, false);
     }
   }
