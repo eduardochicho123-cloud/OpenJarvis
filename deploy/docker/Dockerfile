@@ -58,6 +58,13 @@ COPY deploy/command-center/index.html src/openjarvis/server/static/index.html
 COPY deploy/command-center/styles.css src/openjarvis/server/static/command-center.css
 COPY deploy/command-center/app.js src/openjarvis/server/static/command-center.js
 
+# Sobreescribe tambien el service worker de Workbox (precache agresivo) --
+# navegadores que ya habian visitado la SPA original de OpenJarvis seguian
+# sirviendo esa version cacheada aunque el servidor ya tuviera el Command
+# Center nuevo. Este sw.js se autodestruye (ver el archivo) en cuanto el
+# navegador lo detecta como actualizado.
+COPY deploy/command-center/sw.js src/openjarvis/server/static/sw.js
+
 # Install the project itself without re-resolving dependencies.
 RUN uv pip install --system --no-deps . && \
     maturin build --release \
