@@ -173,10 +173,14 @@ def _is_openai_model(model: str) -> bool:
 def _is_openai_reasoning_model(model: str) -> bool:
     """Check if model is an OpenAI reasoning model that restricts temperature."""
     m = model.lower()
-    # o1/o3 series and gpt-5-mini (all variants) are reasoning models
-    if m.startswith(("o1", "o3")):
-        return True
-    return m == "gpt-5-mini" or m.startswith("gpt-5-mini-")
+    # o1/o3/o4 and the whole gpt-5 family (gpt-5, gpt-5.4, gpt-5-mini,
+    # gpt-5-nano, and any dated variants) reject a non-default temperature.
+    # This used to only match "gpt-5-mini", so every gpt-5-nano call sent
+    # temperature=0.7 anyway, got a guaranteed 400 unsupported_value, and
+    # silently paid for a full extra round-trip on the retry-without-
+    # temperature fallback below -- doubling the wall-clock cost of nearly
+    # every turn in an agent tool-calling loop.
+    return m.startswith(("o1", "o3", "o4", "gpt-5"))
 
 
 def _is_unsupported_temperature_error(exc: Exception) -> bool:
