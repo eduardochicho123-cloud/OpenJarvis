@@ -313,10 +313,15 @@
           stream: false,
         }),
       });
-      content = completion.choices?.[0]?.message?.content || '(sin respuesta)';
-      pendingEl.textContent = content;
+      // Un modelo chico puede agotar sus turnos de herramientas sin llegar a
+      // escribir una respuesta final -- el pedido sale 200 OK igual, asi que
+      // content queda vacio. El texto "(sin respuesta)" es solo para
+      // mostrar en pantalla; no se manda a la voz (antes Jarvis literalmente
+      // "decia" esas palabras).
+      content = completion.choices?.[0]?.message?.content || '';
+      pendingEl.textContent = content || '(sin respuesta)';
       pendingEl.classList.remove('pending');
-      messages.push({ role: 'assistant', content });
+      messages.push({ role: 'assistant', content: content || '(sin respuesta)' });
     } catch (err) {
       pendingEl.textContent = 'Error al responder: ' + err.message;
       pendingEl.classList.remove('pending');
@@ -327,6 +332,10 @@
 
     if (content) {
       await speak(content);
+    } else {
+      // Sin esto, si content vino vacio (ver comentario arriba) speak()
+      // nunca se llama y la esfera se queda trabada en "Pensando...".
+      setOrbState('idle', '');
     }
   }
 

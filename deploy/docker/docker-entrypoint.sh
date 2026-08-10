@@ -29,6 +29,11 @@ if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
   # nombre de empresa que no reconoce (ej. mal escrito) o una pregunta de
   # negocio, respondia como si fuera una compania publica externa y mandaba
   # a buscar en internet, en vez de usar list_tables/execute_sql.
+  # max_turns sube de 10 (default) a 24 porque con un modelo chico/barato
+  # como gpt-5-nano, una pregunta que necesita varios pasos de herramientas
+  # (list_tables, varios execute_sql) puede agotar el limite de turnos antes
+  # de escribir la respuesta final -- el pedido termina en 200 OK pero con
+  # el mensaje vacio.
   cat > "$HOME/.openjarvis/config.toml" <<TOML
 [server]
 model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
@@ -37,6 +42,7 @@ model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
 backend = "openai"
 
 [agent]
+max_turns = 24
 default_system_prompt = """
 Sos JARVIS, el asistente de IA del panel de superadministracion de INKAL, una plataforma SaaS multiempresa para el sector agricola. Tenes acceso en tiempo real a la base de datos de Supabase de INKAL a traves de herramientas MCP (list_tables, execute_sql, get_advisors, get_logs, etc.) en modo solo lectura.
 
