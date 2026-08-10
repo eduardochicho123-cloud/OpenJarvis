@@ -215,7 +215,15 @@
     // A diferencia de antes, un fallo aca SI se muestra en el chat -- la voz
     // fallaba en silencio y no habia forma de saber por que sin revisar los
     // logs del servidor cada vez.
+    //
+    // Reproduccion simple (sin Web Audio API / AnalyserNode): un intento
+    // anterior ruteaba el audio por un AudioContext para que la esfera
+    // reaccionara al volumen real, pero eso fallaba con "audio error (code
+    // 4)" -- MEDIA_ERR_SRC_NOT_SUPPORTED -- ademas de sumar una fuente mas
+    // de fallos silenciosos. El pulso de la esfera ahora es sintetico
+    // (basado en el tiempo de reproduccion), no en el volumen real.
     let playError = null;
+    let blob = null;
     try {
       const res = await fetch('/v1/speech/synthesize', {
         method: 'POST',
@@ -223,26 +231,25 @@
         body: JSON.stringify({ text }),
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const blob = await res.blob();
+      blob = await res.blob();
+      if (!blob.size) throw new Error('la respuesta llego vacia (0 bytes)');
+
       const url = URL.createObjectURL(blob);
       const audioEl = new Audio(url);
-      const ctx = getAudioCtx();
-      if (ctx.state === 'suspended') await ctx.resume();
-      const source = ctx.createMediaElementSource(audioEl);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
+      const orb = $('orb');
+      const pulse = () => {
+        const amp = 0.4 + 0.4 * Math.abs(Math.sin(audioEl.currentTime * 6));
+        orb.style.setProperty('--orb-amp', amp.toFixed(3));
+      };
+      audioEl.addEventListener('timeupdate', pulse);
 
       setOrbState('speaking', 'Hablando...');
-      startAmplitudeLoop(analyser);
 
       await new Promise((resolve) => {
         audioEl.onended = resolve;
         audioEl.onerror = () => {
-          playError = audioEl.error
-            ? `audio error (code ${audioEl.error.code})`
-            : 'audio error desconocido';
+          const code = audioEl.error ? audioEl.error.code : '?';
+          playError = `audio error (code ${code}, blob ${blob.size}b/${blob.type})`;
           resolve();
         };
         audioEl.play().catch((err) => {
@@ -254,12 +261,16 @@
     } catch (err) {
       playError = err.message || String(err);
     } finally {
-      stopAmplitudeLoop();
+      orbAmpReset();
       setOrbState('idle', '');
     }
     if (playError) {
       appendMessage('assistant', `(No se pudo reproducir la voz: ${playError})`, false);
     }
+  }
+
+  function orbAmpReset() {
+    $('orb').style.setProperty('--orb-amp', '0');
   }
 
   async function sendMessage(text) {
