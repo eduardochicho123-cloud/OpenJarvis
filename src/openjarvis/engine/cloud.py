@@ -62,6 +62,7 @@ _OPENAI_MODELS = [
     "gpt-5",
     "gpt-5.4",
     "gpt-5-mini",
+    "gpt-5-nano",
     "o3-mini",
 ]
 _ANTHROPIC_MODELS = [
