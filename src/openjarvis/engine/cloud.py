@@ -582,7 +582,15 @@ class CloudEngine(InferenceEngine):
             "max_completion_tokens": max_tokens,
             **kwargs,
         }
-        if not _is_openai_reasoning_model(model):
+        if _is_openai_reasoning_model(model):
+            # "low" instead of the platform default (~medium) -- measured
+            # directly against the OpenAI API, a trivial question burned 128
+            # hidden reasoning tokens and ~3.3s at the default effort vs 0
+            # tokens and ~1.1s at "low". Most of what this agent does is
+            # straightforward tool-calling/lookup work, not deep multi-step
+            # planning, so the accuracy tradeoff is worth the latency win.
+            create_kwargs["reasoning_effort"] = "low"
+        else:
             create_kwargs["temperature"] = temperature
 
         # Apply structured output / JSON mode
@@ -1234,7 +1242,9 @@ class CloudEngine(InferenceEngine):
             "stream": True,
             **kwargs,
         }
-        if not _is_openai_reasoning_model(model):
+        if _is_openai_reasoning_model(model):
+            create_kwargs["reasoning_effort"] = "low"  # see generate() for why
+        else:
             create_kwargs["temperature"] = temperature
         resp = self._openai_client.chat.completions.create(**create_kwargs)
         for chunk in resp:
@@ -1468,7 +1478,9 @@ class CloudEngine(InferenceEngine):
                 "stream": True,
                 **kwargs,
             }
-            if not _is_openai_reasoning_model(model):
+            if _is_openai_reasoning_model(model):
+                create_kwargs["reasoning_effort"] = "low"  # see generate() for why
+            else:
                 create_kwargs["temperature"] = temperature
         resp = client.chat.completions.create(**create_kwargs)
         for chunk in resp:
