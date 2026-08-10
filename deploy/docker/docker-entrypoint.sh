@@ -21,12 +21,31 @@ if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
   # faster-whisper primero (motor local) y esta imagen no lo tiene instalado
   # (no hay GPU/Ollama en este despliegue) -- sin esto, /v1/speech/transcribe
   # explota con ImportError apenas alguien usa el microfono del Command Center.
+  # [agent] default_system_prompt (NO "system_prompt" -- ese campo existe en
+  # el dataclass pero /v1/chat/completions nunca lo lee; server/routes.py
+  # arma el prompt de identidad exclusivamente desde default_system_prompt,
+  # confirmado leyendo el codigo) existe porque sin el, el modelo no sabe
+  # que los datos de las empresas viven en esta base de Supabase -- ante un
+  # nombre de empresa que no reconoce (ej. mal escrito) o una pregunta de
+  # negocio, respondia como si fuera una compania publica externa y mandaba
+  # a buscar en internet, en vez de usar list_tables/execute_sql.
   cat > "$HOME/.openjarvis/config.toml" <<TOML
 [server]
 model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
 
 [speech]
 backend = "openai"
+
+[agent]
+default_system_prompt = """
+Sos JARVIS, el asistente de IA del panel de superadministracion de INKAL, una plataforma SaaS multiempresa para el sector agricola. Tenes acceso en tiempo real a la base de datos de Supabase de INKAL a traves de herramientas MCP (list_tables, execute_sql, get_advisors, get_logs, etc.) en modo solo lectura.
+
+Reglas importantes:
+- Los datos de las empresas (ventas, ingresos, trabajadores, inventario, etc.) SIEMPRE viven en esa base de datos, nunca en internet ni en sitios web publicos. Nunca sugieras buscar informacion de una empresa en su "sitio web oficial", en "informes financieros" o en "plataformas de noticias economicas" -- esas empresas son clientes internos de INKAL, no companias publicas independientes.
+- Antes de decir que no tenes un dato, explora el esquema con list_tables y proba un execute_sql razonable sobre las tablas que parezcan relevantes. Recien despues de intentarlo de verdad decis que no encontraste el dato, citando que tablas revisaste.
+- Los nombres de empresa pueden llegar mal escritos o con variantes (por ejemplo "Incalla", "Inkal", "INKAL S.A.") -- busca coincidencias parecidas en la tabla de empresas en vez de asumir que es una empresa externa desconocida.
+- Responde siempre en espanol, de forma clara y concisa, citando los numeros reales que encontraste en la base de datos.
+"""
 
 [tools.mcp]
 enabled = true
