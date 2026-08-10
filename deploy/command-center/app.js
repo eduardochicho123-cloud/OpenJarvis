@@ -223,11 +223,23 @@
       mediaRecorder.stop();
       return;
     }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      appendMessage(
+        'assistant',
+        'Este navegador no expone navigator.mediaDevices.getUserMedia en este contexto (revisar si la pagina se sirve por HTTPS y si hay alguna politica/extension bloqueandolo).',
+        false,
+      );
+      return;
+    }
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      appendMessage('assistant', 'No se pudo acceder al micrófono.', false);
+    } catch (err) {
+      appendMessage(
+        'assistant',
+        `No se pudo acceder al micrófono -- ${err.name}: ${err.message}`,
+        false,
+      );
       return;
     }
     audioChunks = [];
