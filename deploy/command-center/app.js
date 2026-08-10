@@ -14,6 +14,7 @@
   let messages = [];
   let mediaRecorder = null;
   let audioChunks = [];
+  let currentSpeechAudio = null;
 
   const $ = (id) => document.getElementById(id);
 
@@ -211,6 +212,20 @@
     return div;
   }
 
+  // Si llega una respuesta nueva mientras la anterior todavia esta
+  // hablando (dos mensajes seguidos, o texto + voz casi al mismo tiempo),
+  // sin esto quedaban dos <audio> reproduciendo en paralelo -- Jarvis
+  // hablando dos veces a la vez, sin forma de callarlo.
+  function stopCurrentSpeech() {
+    if (!currentSpeechAudio) return;
+    const { audioEl, finish } = currentSpeechAudio;
+    currentSpeechAudio = null;
+    audioEl.onended = null;
+    audioEl.onerror = null;
+    audioEl.pause();
+    finish();
+  }
+
   async function speak(text) {
     // A diferencia de antes, un fallo aca SI se muestra en el chat -- la voz
     // fallaba en silencio y no habia forma de saber por que sin revisar los
@@ -222,8 +237,11 @@
     // 4)" -- MEDIA_ERR_SRC_NOT_SUPPORTED -- ademas de sumar una fuente mas
     // de fallos silenciosos. El pulso de la esfera ahora es sintetico
     // (basado en el tiempo de reproduccion), no en el volumen real.
+    stopCurrentSpeech();
+
     let playError = null;
     let blob = null;
+    let audioEl = null;
     try {
       const res = await fetch('/v1/speech/synthesize', {
         method: 'POST',
@@ -235,7 +253,7 @@
       if (!blob.size) throw new Error('la respuesta llego vacia (0 bytes)');
 
       const url = URL.createObjectURL(blob);
-      const audioEl = new Audio(url);
+      audioEl = new Audio(url);
       const orb = $('orb');
       const pulse = () => {
         const amp = 0.4 + 0.4 * Math.abs(Math.sin(audioEl.currentTime * 6));
@@ -263,6 +281,7 @@
       };
 
       await new Promise((resolve) => {
+        currentSpeechAudio = { audioEl, finish: resolve };
         audioEl.onended = resolve;
         audioEl.onerror = async () => {
           const code = audioEl.error ? audioEl.error.code : '?';
@@ -280,6 +299,9 @@
     } catch (err) {
       playError = err.message || String(err);
     } finally {
+      if (currentSpeechAudio && currentSpeechAudio.audioEl === audioEl) {
+        currentSpeechAudio = null;
+      }
       orbAmpReset();
       setOrbState('idle', '');
     }
