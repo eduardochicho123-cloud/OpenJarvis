@@ -51,6 +51,13 @@ COPY deploy/windows deploy/windows
 # Copy built frontend into the server static directory
 COPY --from=frontend /src/openjarvis/server/static src/openjarvis/server/static/
 
+# Overlay the INKAL Command Center on top of OpenJarvis's own frontend --
+# replaces index.html (and adds its own JS/CSS) so the server keeps its
+# bundled SPA intact in the repo/build, but serves our page at "/" instead.
+COPY deploy/command-center/index.html src/openjarvis/server/static/index.html
+COPY deploy/command-center/styles.css src/openjarvis/server/static/command-center.css
+COPY deploy/command-center/app.js src/openjarvis/server/static/command-center.js
+
 # Install the project itself without re-resolving dependencies.
 RUN uv pip install --system --no-deps . && \
     maturin build --release \

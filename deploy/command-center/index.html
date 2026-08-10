@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JARVIS · INKAL Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/command-center.css" />
+</head>
+<body>
+
+<div id="auth-overlay" class="overlay">
+  <div class="auth-box">
+    <h1>JARVIS</h1>
+    <p>Ingresá la API key del servidor para continuar.</p>
+    <input id="auth-input" type="password" placeholder="API key" autocomplete="off" />
+    <button id="auth-submit">Conectar</button>
+    <p id="auth-error" class="error"></p>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◈</span>
+      <div>
+        <div class="brand-title">JARVIS</div>
+        <div class="brand-sub">INKAL Command Center</div>
+      </div>
+    </div>
+    <div class="status-pill" id="status-pill">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Conectando...</span>
+    </div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <main class="grid">
+    <section class="panel chat-panel">
+      <div class="panel-title">Conversación</div>
+      <div class="chat-log" id="chat-log">
+        <div class="chat-empty">Escribí o aplaudí dos veces cerca del micrófono en el panel de INKAL para empezar.</div>
+      </div>
+      <div class="chat-input-row">
+        <button id="mic-btn" class="icon-btn" title="Hablar">🎤</button>
+        <textarea id="chat-input" placeholder="Preguntale algo a Jarvis..." rows="1"></textarea>
+        <button id="send-btn" class="icon-btn send" title="Enviar">➤</button>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel">
+        <div class="panel-title">AI Core</div>
+        <div class="kv"><span>Motor</span><b id="info-engine">—</b></div>
+        <div class="kv"><span>Modelo</span><b id="info-model">—</b></div>
+        <div class="kv"><span>Agente</span><b id="info-agent">—</b></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Agentes</div>
+        <div id="agents-list" class="tag-list">—</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Sesión</div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-value" id="stat-requests">0</div><div class="stat-label">Pedidos</div></div>
+          <div class="stat"><div class="stat-value" id="stat-tokens">0</div><div class="stat-label">Tokens</div></div>
+          <div class="stat"><div class="stat-value" id="stat-power">0.0 W</div><div class="stat-label">Potencia</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Memoria</div>
+        <div class="kv"><span>Estado</span><b id="memory-status">—</b></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Herramientas</div>
+        <div id="tools-list" class="tag-list">—</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Accesos</div>
+        <button class="link-btn" id="new-chat-btn">Nueva conversación</button>
+        <a class="link-btn" href="https://gtexpressstore-panel-next.7m3tsq.easypanel.host/" target="_blank" rel="noopener">Volver al panel de INKAL</a>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script src="/command-center.js"></script>
+</body>
+</html>
