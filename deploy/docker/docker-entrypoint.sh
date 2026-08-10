@@ -17,9 +17,16 @@ if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
   # nativa auto-selecciona); gpt-4o-mini es bastante mas barato que gpt-4o y
   # anda bien para este tipo de preguntas. Un pedido de chat puede seguir
   # pidiendo otro modelo explicitamente sin que esto se lo impida.
+  # [speech] backend se fuerza a "openai" porque el default "auto" prueba
+  # faster-whisper primero (motor local) y esta imagen no lo tiene instalado
+  # (no hay GPU/Ollama en este despliegue) -- sin esto, /v1/speech/transcribe
+  # explota con ImportError apenas alguien usa el microfono del Command Center.
   cat > "$HOME/.openjarvis/config.toml" <<TOML
 [server]
 model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
+
+[speech]
+backend = "openai"
 
 [tools.mcp]
 enabled = true
