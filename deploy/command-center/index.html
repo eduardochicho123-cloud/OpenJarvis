@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>JARVIS · INKAL Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/command-center.css" />
 </head>
 <body>
 
 <div id="auth-overlay" class="overlay">
   <div class="auth-box">
+    <div class="orb small"><div class="orb-core"></div><div class="orb-ring r1"></div><div class="orb-ring r2"></div></div>
     <h1>JARVIS</h1>
     <p>Ingresá la API key del servidor para continuar.</p>
     <input id="auth-input" type="password" placeholder="API key" autocomplete="off" />
@@ -38,56 +39,91 @@
 
   <main class="grid">
     <section class="panel chat-panel">
-      <div class="panel-title">Conversación</div>
+      <div class="panel-title"><svg viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h9"/></svg>Conversación</div>
       <div class="chat-log" id="chat-log">
-        <div class="chat-empty">Escribí o aplaudí dos veces cerca del micrófono en el panel de INKAL para empezar.</div>
+        <div class="chat-empty">
+          <div class="orb">
+            <div class="orb-core"></div>
+            <div class="orb-ring r1"></div>
+            <div class="orb-ring r2"></div>
+            <div class="orb-ring r3"></div>
+            <span class="orb-dot d1"></span>
+            <span class="orb-dot d2"></span>
+            <span class="orb-dot d3"></span>
+          </div>
+          <div class="orb-label">JARVIS</div>
+          <div class="orb-sub">AI CORE</div>
+          <p>Escribí o aplaudí dos veces cerca del micrófono en el panel de INKAL para empezar.</p>
+        </div>
       </div>
       <div class="chat-input-row">
-        <button id="mic-btn" class="icon-btn" title="Hablar">🎤</button>
+        <button id="mic-btn" class="icon-btn" title="Hablar">
+          <svg viewBox="0 0 20 20"><path d="M10 2a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M5 9v1a5 5 0 0 0 10 0V9M10 17v2"/></svg>
+        </button>
         <textarea id="chat-input" placeholder="Preguntale algo a Jarvis..." rows="1"></textarea>
-        <button id="send-btn" class="icon-btn send" title="Enviar">➤</button>
+        <button id="send-btn" class="icon-btn send" title="Enviar">
+          <svg viewBox="0 0 20 20"><path d="M3 10l14-7-5 7 5 7z"/></svg>
+        </button>
       </div>
     </section>
 
     <aside class="sidebar">
       <section class="panel">
-        <div class="panel-title">AI Core</div>
+        <div class="panel-title"><svg viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="8" rx="1"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3M4 4l2 2M14 14l2 2M4 16l2-2M14 6l2-2"/></svg>AI Core</div>
         <div class="kv"><span>Motor</span><b id="info-engine">—</b></div>
         <div class="kv"><span>Modelo</span><b id="info-model">—</b></div>
         <div class="kv"><span>Agente</span><b id="info-agent">—</b></div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Agentes</div>
+        <div class="panel-title"><svg viewBox="0 0 20 20"><circle cx="6" cy="7" r="2.4"/><circle cx="14" cy="7" r="2.4"/><circle cx="10" cy="15" r="2.4"/><path d="M7.7 8.7L8.6 12.6M12.3 8.7L11.4 12.6"/></svg>Agentes</div>
         <div id="agents-list" class="tag-list">—</div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Sesión</div>
+        <div class="panel-title"><svg viewBox="0 0 20 20"><path d="M2 11h3l2-6 4 12 2-9 2 3h3"/></svg>Sesión</div>
         <div class="stat-row">
-          <div class="stat"><div class="stat-value" id="stat-requests">0</div><div class="stat-label">Pedidos</div></div>
-          <div class="stat"><div class="stat-value" id="stat-tokens">0</div><div class="stat-label">Tokens</div></div>
-          <div class="stat"><div class="stat-value" id="stat-power">0.0 W</div><div class="stat-label">Potencia</div></div>
+          <div class="stat">
+            <div class="ring" id="ring-requests" style="--pct:0"><span id="stat-requests">0</span></div>
+            <div class="stat-label">Pedidos</div>
+          </div>
+          <div class="stat">
+            <div class="ring" id="ring-tokens" style="--pct:0"><span id="stat-tokens">0</span></div>
+            <div class="stat-label">Tokens</div>
+          </div>
+          <div class="stat">
+            <div class="ring" id="ring-power" style="--pct:0"><span id="stat-power">0.0W</span></div>
+            <div class="stat-label">Potencia</div>
+          </div>
         </div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Memoria</div>
+        <div class="panel-title"><svg viewBox="0 0 20 20"><ellipse cx="10" cy="4.5" rx="7" ry="2.5"/><path d="M3 4.5v5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-5"/><path d="M3 9.5v5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-5"/></svg>Memoria</div>
         <div class="kv"><span>Estado</span><b id="memory-status">—</b></div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Herramientas</div>
+        <div class="panel-title"><svg viewBox="0 0 20 20"><path d="M13 3l4 4-2 2-4-4zM3 17l6-6M11 5l4 4-6.5 6.5a1.5 1.5 0 0 1-2.1 0v0a1.5 1.5 0 0 1 0-2.1z"/></svg>Herramientas</div>
         <div id="tools-list" class="tag-list">—</div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Accesos</div>
+        <div class="panel-title"><svg viewBox="0 0 20 20"><path d="M8 12a4 4 0 0 0 6 0l2-2a4 4 0 0 0-6-6l-1 1"/><path d="M12 8a4 4 0 0 0-6 0l-2 2a4 4 0 0 0 6 6l1-1"/></svg>Accesos</div>
         <button class="link-btn" id="new-chat-btn">Nueva conversación</button>
         <a class="link-btn" href="https://gtexpressstore-panel-next.7m3tsq.easypanel.host/" target="_blank" rel="noopener">Volver al panel de INKAL</a>
       </section>
     </aside>
   </main>
+
+  <div class="talk-bar" id="talk-bar">
+    <div class="waveform" id="wave-left"><span></span><span></span><span></span><span></span><span></span></div>
+    <button class="talk-btn" id="talk-btn">
+      <svg viewBox="0 0 20 20"><path d="M10 2a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M5 9v1a5 5 0 0 0 10 0V9M10 17v2"/></svg>
+      <span id="talk-label">Hablar con Jarvis</span>
+    </button>
+    <div class="waveform" id="wave-right"><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
 </div>
 
 <script src="/command-center.js"></script>

@@ -1,4 +1,13 @@
 (() => {
+  // Si esta pagina ya esta controlada por un service worker (el viejo, de
+  // la SPA nativa de OpenJarvis, con precache agresivo via Workbox), hay
+  // que re-registrar para que el navegador chequee /sw.js, note el cambio
+  // e instale el que se autodestruye -- sin controller no hace falta
+  // (evita un loop de registro-desregistro-registro en cada carga).
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
   const API_KEY_STORAGE = 'jarvis-command-center-api-key';
   let apiKey = localStorage.getItem(API_KEY_STORAGE) || '';
   let serverModel = '';
@@ -82,17 +91,32 @@
       .join('') || '—';
   }
 
+  // Los aros son solo un efecto visual -- no hay un "maximo" real de pedidos
+  // o tokens, asi que se escalan contra un techo arbitrario nada mas para
+  // que el anillo se llene progresivamente en una sesion normal.
+  function setRing(id, value, ceiling) {
+    const pct = Math.max(4, Math.min(100, (value / ceiling) * 100));
+    const el = $(id);
+    if (el) el.style.setProperty('--pct', pct.toFixed(0));
+  }
+
   async function loadTelemetry() {
     try {
       const stats = await api('/v1/telemetry/stats');
-      $('stat-requests').textContent = stats.total_requests ?? 0;
-      $('stat-tokens').textContent = stats.total_tokens ?? 0;
+      const requests = stats.total_requests ?? 0;
+      const tokens = stats.total_tokens ?? 0;
+      $('stat-requests').textContent = requests;
+      $('stat-tokens').textContent = tokens;
+      setRing('ring-requests', requests, 20);
+      setRing('ring-tokens', tokens, 5000);
     } catch {
       /* telemetry is best-effort */
     }
     try {
       const energy = await api('/v1/telemetry/energy');
-      $('stat-power').textContent = `${(energy.avg_power_w || 0).toFixed(1)} W`;
+      const power = energy.avg_power_w || 0;
+      $('stat-power').textContent = `${power.toFixed(1)}W`;
+      setRing('ring-power', power, 50);
     } catch {
       /* best-effort */
     }
@@ -186,8 +210,15 @@
   });
 
   // ---- mic ----
+  // El boton del chat y la barra flotante "Hablar con Jarvis" son dos
+  // entradas para la misma accion -- se mantienen sincronizados.
+  function setRecordingUI(recording) {
+    $('mic-btn').classList.toggle('recording', recording);
+    $('talk-btn').classList.toggle('recording', recording);
+    $('talk-label').textContent = recording ? 'Escuchando...' : 'Hablar con Jarvis';
+  }
+
   async function toggleMic() {
-    const btn = $('mic-btn');
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
       return;
@@ -203,7 +234,7 @@
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
     mediaRecorder.onstop = async () => {
-      btn.classList.remove('recording');
+      setRecordingUI(false);
       stream.getTracks().forEach((t) => t.stop());
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
       const form = new FormData();
@@ -225,10 +256,11 @@
       }
     };
     mediaRecorder.start();
-    btn.classList.add('recording');
+    setRecordingUI(true);
   }
 
   $('mic-btn').addEventListener('click', toggleMic);
+  $('talk-btn').addEventListener('click', toggleMic);
 
   // ---- boot ----
   async function boot() {
