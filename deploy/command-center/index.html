@@ -38,23 +38,19 @@
   </header>
 
   <main class="grid">
-    <section class="panel chat-panel">
-      <div class="panel-title"><svg viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h9"/></svg>Conversación</div>
-      <div class="chat-log" id="chat-log">
-        <div class="chat-empty">
-          <div class="orb">
-            <div class="orb-core"></div>
-            <div class="orb-ring r1"></div>
-            <div class="orb-ring r2"></div>
-            <div class="orb-ring r3"></div>
-            <span class="orb-dot d1"></span>
-            <span class="orb-dot d2"></span>
-            <span class="orb-dot d3"></span>
-          </div>
-          <div class="orb-label">JARVIS</div>
-          <div class="orb-sub">AI CORE</div>
-          <p>Escribí o aplaudí dos veces cerca del micrófono en el panel de INKAL para empezar.</p>
+    <section class="panel stage-panel">
+      <div class="stage">
+        <div class="orb stage" id="orb">
+          <div class="orb-core"></div>
+          <div class="orb-ring r1"></div>
+          <div class="orb-ring r2"></div>
+          <div class="orb-ring r3"></div>
+          <span class="orb-dot d1"></span>
+          <span class="orb-dot d2"></span>
+          <span class="orb-dot d3"></span>
         </div>
+        <div class="orb-label">JARVIS</div>
+        <div class="orb-status" id="orb-status">Decime algo o escribí abajo para empezar.</div>
       </div>
       <div class="chat-input-row">
         <button id="mic-btn" class="icon-btn" title="Hablar">
@@ -68,6 +64,13 @@
     </section>
 
     <aside class="sidebar">
+      <section class="panel chat-history-panel">
+        <div class="panel-title"><svg viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h9"/></svg>Conversación</div>
+        <div class="chat-log" id="chat-log">
+          <div class="chat-empty">Sin mensajes todavía.</div>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="panel-title"><svg viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="8" rx="1"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3M4 4l2 2M14 14l2 2M4 16l2-2M14 6l2-2"/></svg>AI Core</div>
         <div class="kv"><span>Motor</span><b id="info-engine">—</b></div>

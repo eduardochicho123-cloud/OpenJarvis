@@ -478,6 +478,24 @@ def serve(
     except Exception as exc:
         logger.debug("Speech backend discovery failed: %s", exc)
 
+    # Set up TTS backend for spoken responses (Command Center voice output).
+    # No config surface exists yet for TTS backend selection (unlike STT's
+    # "auto"/"faster-whisper"/"openai"/"deepgram"), so this goes straight to
+    # OpenAI's cloud TTS -- the only backend that works without extra API
+    # keys or local models this deployment doesn't have.
+    tts_backend = None
+    try:
+        import os
+
+        import openjarvis.speech  # noqa: F401 -- registers TTSRegistry backends
+        from openjarvis.core.registry import TTSRegistry
+
+        if os.environ.get("OPENAI_API_KEY") and TTSRegistry.contains("openai_tts"):
+            tts_backend = TTSRegistry.get("openai_tts")()
+            console.print(f"  TTS:       [cyan]{tts_backend.backend_id}[/cyan]")
+    except Exception as exc:
+        logger.debug("TTS backend discovery failed: %s", exc)
+
     # Create app
     from openjarvis.server.app import create_app
 
@@ -693,6 +711,7 @@ def serve(
         memory_backend=memory_backend,
         memory_service=memory_service,
         speech_backend=speech_backend,
+        tts_backend=tts_backend,
         agent_manager=agent_manager,
         agent_scheduler=agent_scheduler,
         api_key=api_key,

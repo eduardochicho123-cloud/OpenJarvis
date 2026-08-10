@@ -153,6 +153,51 @@
     loadSkills().catch(() => {});
   }
 
+  // ---- orb state ----
+  // La esfera es la interfaz principal: idle (nada pasando), listening
+  // (grabando el microfono), thinking (esperando la respuesta del modelo) y
+  // speaking (reproduciendo la voz de Jarvis). El texto sigue existiendo,
+  // pero como bitacora secundaria en el costado, no como protagonista.
+  function setOrbState(state, label) {
+    const orb = $('orb');
+    orb.classList.remove('state-listening', 'state-thinking', 'state-speaking');
+    if (state !== 'idle') orb.classList.add(`state-${state}`);
+    const statusEl = $('orb-status');
+    statusEl.className = 'orb-status' + (state !== 'idle' ? ` ${state}` : '');
+    statusEl.textContent = label || '';
+  }
+
+  // ---- audio amplitude (hace que la esfera reaccione en vivo al volumen
+  // real del microfono o de la voz de Jarvis, en vez de una animacion fija) ----
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  let ampRAF = null;
+  function startAmplitudeLoop(analyser) {
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const orb = $('orb');
+    function tick() {
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      orb.style.setProperty('--orb-amp', Math.min(1, rms * 4).toFixed(3));
+      ampRAF = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+  function stopAmplitudeLoop() {
+    if (ampRAF) cancelAnimationFrame(ampRAF);
+    ampRAF = null;
+    $('orb').style.setProperty('--orb-amp', '0');
+  }
+
   // ---- chat ----
   function appendMessage(role, text, pending) {
     const log = $('chat-log');
@@ -166,13 +211,52 @@
     return div;
   }
 
+  async function speak(text) {
+    try {
+      const res = await fetch('/v1/speech/synthesize', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audioEl = new Audio(url);
+      const ctx = getAudioCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
+      const source = ctx.createMediaElementSource(audioEl);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      setOrbState('speaking', 'Hablando...');
+      startAmplitudeLoop(analyser);
+
+      await new Promise((resolve) => {
+        audioEl.onended = resolve;
+        audioEl.onerror = resolve;
+        audioEl.play().catch(resolve);
+      });
+      URL.revokeObjectURL(url);
+    } catch {
+      // La voz es un complemento -- si falla (backend sin API key, red,
+      // etc.) el texto ya quedo en el panel de conversacion igual.
+    } finally {
+      stopAmplitudeLoop();
+      setOrbState('idle', '');
+    }
+  }
+
   async function sendMessage(text) {
     if (!text.trim()) return;
     appendMessage('user', text);
     messages.push({ role: 'user', content: text });
     $('chat-input').value = '';
     const pendingEl = appendMessage('assistant', 'Pensando...', true);
+    setOrbState('thinking', 'Pensando...');
 
+    let content = null;
     try {
       // stream:false a proposito -- el servidor solo corre el agente con
       // herramientas (MCP de Supabase incluido) en pedidos sin streaming.
@@ -185,16 +269,21 @@
           stream: false,
         }),
       });
-      const content = completion.choices?.[0]?.message?.content || '(sin respuesta)';
+      content = completion.choices?.[0]?.message?.content || '(sin respuesta)';
       pendingEl.textContent = content;
       pendingEl.classList.remove('pending');
       messages.push({ role: 'assistant', content });
     } catch (err) {
       pendingEl.textContent = 'Error al responder: ' + err.message;
       pendingEl.classList.remove('pending');
+      setOrbState('idle', '');
     }
 
     loadTelemetry().catch(() => {});
+
+    if (content) {
+      await speak(content);
+    }
   }
 
   $('send-btn').addEventListener('click', () => sendMessage($('chat-input').value));
@@ -206,7 +295,7 @@
   });
   $('new-chat-btn').addEventListener('click', () => {
     messages = [];
-    $('chat-log').innerHTML = '<div class="chat-empty">Nueva conversación.</div>';
+    $('chat-log').innerHTML = '<div class="chat-empty">Sin mensajes todavía.</div>';
   });
 
   // ---- mic ----
@@ -242,12 +331,26 @@
       );
       return;
     }
+
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+    const micSource = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    micSource.connect(analyser);
+    setOrbState('listening', 'Escuchando...');
+    startAmplitudeLoop(analyser);
+
     audioChunks = [];
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
     mediaRecorder.onstop = async () => {
       setRecordingUI(false);
+      stopAmplitudeLoop();
+      micSource.disconnect();
       stream.getTracks().forEach((t) => t.stop());
+      setOrbState('thinking', 'Transcribiendo...');
+
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
       const form = new FormData();
       form.append('file', blob, 'recording.webm');
@@ -262,9 +365,12 @@
         if (data.text) {
           $('chat-input').value = data.text;
           sendMessage(data.text);
+        } else {
+          setOrbState('idle', '');
         }
       } catch (err) {
         appendMessage('assistant', 'No se pudo transcribir el audio: ' + err.message, false);
+        setOrbState('idle', '');
       }
     };
     mediaRecorder.start();

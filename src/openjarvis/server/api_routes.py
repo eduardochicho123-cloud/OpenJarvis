@@ -920,6 +920,40 @@ async def transcribe_speech(request: Request):
     }
 
 
+@speech_router.post("/synthesize")
+async def synthesize_speech(request: Request):
+    """Synthesize text to speech audio, for spoken assistant responses."""
+    from starlette.responses import Response
+
+    backend = getattr(request.app.state, "tts_backend", None)
+    if backend is None:
+        raise HTTPException(status_code=501, detail="TTS backend not configured")
+
+    body = await request.json()
+    text = (body.get("text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Missing 'text' field")
+    voice_id = body.get("voice_id") or "onyx"
+    speed = float(body.get("speed", 1.0))
+
+    try:
+        result = await asyncio.to_thread(
+            backend.synthesize,
+            text,
+            voice_id=voice_id,
+            speed=speed,
+        )
+    except Exception as exc:
+        logger.exception("Speech synthesis failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Speech synthesis failed: {exc}",
+        ) from exc
+
+    media_type = "audio/mpeg" if result.format == "mp3" else f"audio/{result.format}"
+    return Response(content=result.audio, media_type=media_type)
+
+
 @speech_router.get("/health")
 async def speech_health(request: Request):
     """Check if a speech backend is available."""

@@ -36,6 +36,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   margin: 0 auto 8px;
 }
 .orb.small { width: 64px; height: 64px; margin-bottom: 16px; }
+.orb.stage { width: 220px; height: 220px; margin-bottom: 4px; }
 .orb-core {
   position: absolute;
   inset: 30%;
@@ -43,6 +44,34 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   background: radial-gradient(circle at 35% 30%, #a5f3fc, var(--cyan) 45%, var(--cyan-dim) 100%);
   box-shadow: 0 0 30px 6px rgba(34,211,238,0.55), 0 0 70px 20px rgba(34,211,238,0.25);
   animation: pulse-core 3s ease-in-out infinite;
+}
+
+/* Estados de la esfera segun lo que este haciendo Jarvis. Escuchando/hablando
+   apagan la animacion ambiente y en cambio reaccionan en vivo al volumen real
+   del audio (microfono o voz sintetizada) via la variable --orb-amp, que
+   app.js actualiza cuadro a cuadro con un AnalyserNode. */
+.orb.state-listening .orb-core {
+  animation: none;
+  transform: scale(calc(1 + var(--orb-amp, 0) * 0.4));
+  background: radial-gradient(circle at 35% 30%, #fecaca, var(--danger) 45%, #991b1b 100%);
+  box-shadow: 0 0 34px 8px rgba(248,113,113,0.6), 0 0 80px 22px rgba(248,113,113,0.3);
+}
+.orb.state-listening .orb-ring { border-color: rgba(248,113,113,0.4); }
+.orb.state-listening .orb-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.orb.state-thinking .orb-core {
+  animation: pulse-think 0.9s ease-in-out infinite;
+  background: radial-gradient(circle at 35% 30%, #fef3c7, #fbbf24 45%, #b45309 100%);
+  box-shadow: 0 0 30px 6px rgba(251,191,36,0.55), 0 0 70px 20px rgba(251,191,36,0.25);
+}
+.orb.state-thinking .orb-ring { animation-duration: 4s; }
+.orb.state-speaking .orb-core {
+  animation: none;
+  transform: scale(calc(1 + var(--orb-amp, 0) * 0.35));
+  box-shadow: 0 0 40px 10px rgba(34,211,238,0.8), 0 0 90px 26px rgba(34,211,238,0.4);
+}
+@keyframes pulse-think {
+  0%, 100% { transform: scale(0.92); }
+  50% { transform: scale(1.08); }
 }
 .orb-ring {
   position: absolute;
@@ -81,13 +110,17 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   font-size: 20px;
   text-shadow: 0 0 20px rgba(34,211,238,0.6);
 }
-.orb-sub {
+.orb-status {
   text-align: center;
   color: var(--text-dim);
-  font-size: 11px;
-  letter-spacing: 4px;
-  margin-bottom: 12px;
+  font-size: 13px;
+  min-height: 18px;
+  margin-top: 6px;
+  transition: color 0.3s ease;
 }
+.orb-status.listening { color: var(--danger); }
+.orb-status.thinking { color: #fbbf24; }
+.orb-status.speaking { color: var(--cyan); }
 
 /* ---- auth overlay ---- */
 .overlay {
@@ -236,19 +269,38 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 }
 .panel-title svg { color: var(--cyan); }
 
-.chat-panel {
+.stage-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
-.chat-log {
+.stage {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+}
+.stage p {
+  color: var(--text-dim);
+  font-size: 13px;
+  max-width: 340px;
+  text-align: center;
+  margin: 10px 0 0;
+}
+
+.chat-history-panel .chat-log {
+  max-height: 280px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-right: 6px;
+  gap: 10px;
+  padding-right: 4px;
 }
+.chat-history-panel .msg { font-size: 13px; max-width: 100%; }
+.chat-history-panel .chat-empty { margin: 0; font-size: 12px; text-align: left; }
 .chat-empty {
   color: var(--text-dim);
   font-size: 13px;
