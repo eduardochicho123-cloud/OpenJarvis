@@ -41,10 +41,26 @@ RUN pip install --no-cache-dir uv && \
     uv pip install --system --no-deps -r requirements.txt && \
     uv pip install --system --no-deps "maturin>=1.12.6,<2"
 
+# Rust build isolated in its own layer, copied and compiled BEFORE src/ and
+# the static assets -- the crate never reads Python source or static files,
+# so this ordering means editing app code, config, or the Command Center's
+# HTML/CSS/JS (frequent, low-risk changes) no longer invalidates the ~4
+# minute crates.io download + compile. Only an actual change under rust/
+# does. Previously this ran combined with the final `pip install .`, so a
+# one-line text edit anywhere under src/ forced a full Rust recompile.
+COPY rust/ rust/
+RUN maturin build --release \
+        --manifest-path rust/crates/openjarvis-python/Cargo.toml \
+        --interpreter python3 \
+        --out /tmp/openjarvis-rust-wheel && \
+    uv pip install --system --no-deps /tmp/openjarvis-rust-wheel/*.whl && \
+    python3 -c "import openjarvis_rust; print('openjarvis_rust ok')" && \
+    python3 -m pip uninstall -y maturin && \
+    rm -rf /tmp/openjarvis-rust-wheel rust
+
 # Copy the source and the non-src force-include paths (see pyproject
 # [tool.hatch.build.targets.wheel.force-include]) before building the project.
 COPY src/ src/
-COPY rust/ rust/
 COPY scripts/install scripts/install
 COPY deploy/windows deploy/windows
 
@@ -65,16 +81,9 @@ COPY deploy/command-center/app.js src/openjarvis/server/static/command-center.js
 # navegador lo detecta como actualizado.
 COPY deploy/command-center/sw.js src/openjarvis/server/static/sw.js
 
-# Install the project itself without re-resolving dependencies.
-RUN uv pip install --system --no-deps . && \
-    maturin build --release \
-        --manifest-path rust/crates/openjarvis-python/Cargo.toml \
-        --interpreter python3 \
-        --out /tmp/openjarvis-rust-wheel && \
-    uv pip install --system --no-deps /tmp/openjarvis-rust-wheel/*.whl && \
-    python3 -c "import openjarvis_rust; print('openjarvis_rust ok')" && \
-    python3 -m pip uninstall -y maturin && \
-    rm -rf /tmp/openjarvis-rust-wheel rust
+# Install the project itself without re-resolving dependencies. Fast --
+# packaging only, no compilation -- since the Rust wheel is already built.
+RUN uv pip install --system --no-deps .
 
 # Stage 3: Runtime
 FROM python:3.12.13-slim-bookworm@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf

@@ -40,6 +40,11 @@ if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
   # quedaba sin espacio a mitad de esa narracion (respuesta cortada a la
   # mitad, no vacia). La regla extra del prompt pidiendole que sea directo
   # ataca la causa; subir el limite es la red de seguridad.
+  #
+  # max_turns y max_tokens quedan detras de variables de entorno (con estos
+  # valores como default) para poder ajustarlos despues sin tocar codigo --
+  # cambiar la variable en EasyPanel y reiniciar el servicio alcanza, no
+  # hace falta un rebuild de imagen (que es lo que tarda los ~4 minutos).
   cat > "$HOME/.openjarvis/config.toml" <<TOML
 [server]
 model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
@@ -48,10 +53,10 @@ model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
 backend = "openai"
 
 [intelligence]
-max_tokens = 4096
+max_tokens = ${OPENJARVIS_MAX_TOKENS:-4096}
 
 [agent]
-max_turns = 24
+max_turns = ${OPENJARVIS_MAX_TURNS:-24}
 default_system_prompt = """
 Sos JARVIS, el asistente de IA del panel de superadministracion de INKAL, una plataforma SaaS multiempresa para el sector agricola. Tenes acceso en tiempo real a la base de datos de Supabase de INKAL a traves de herramientas MCP (list_tables, execute_sql, get_advisors, get_logs, etc.) en modo solo lectura.
 
