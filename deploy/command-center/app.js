@@ -212,6 +212,10 @@
   }
 
   async function speak(text) {
+    // A diferencia de antes, un fallo aca SI se muestra en el chat -- la voz
+    // fallaba en silencio y no habia forma de saber por que sin revisar los
+    // logs del servidor cada vez.
+    let playError = null;
     try {
       const res = await fetch('/v1/speech/synthesize', {
         method: 'POST',
@@ -235,16 +239,26 @@
 
       await new Promise((resolve) => {
         audioEl.onended = resolve;
-        audioEl.onerror = resolve;
-        audioEl.play().catch(resolve);
+        audioEl.onerror = () => {
+          playError = audioEl.error
+            ? `audio error (code ${audioEl.error.code})`
+            : 'audio error desconocido';
+          resolve();
+        };
+        audioEl.play().catch((err) => {
+          playError = `${err.name}: ${err.message}`;
+          resolve();
+        });
       });
       URL.revokeObjectURL(url);
-    } catch {
-      // La voz es un complemento -- si falla (backend sin API key, red,
-      // etc.) el texto ya quedo en el panel de conversacion igual.
+    } catch (err) {
+      playError = err.message || String(err);
     } finally {
       stopAmplitudeLoop();
       setOrbState('idle', '');
+    }
+    if (playError) {
+      appendMessage('assistant', `(No se pudo reproducir la voz: ${playError})`, false);
     }
   }
 
