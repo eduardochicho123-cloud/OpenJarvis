@@ -14,10 +14,21 @@ export async function* streamChat(
   signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
   const base = getBase();
+
+  // The server only runs the agent's tool loop (MCP included) for
+  // non-streaming requests -- streaming responses go straight from the
+  // engine to the client for real-time token output, bypassing any tools
+  // entirely (see openjarvis/server/routes.py: _handle_stream vs
+  // _handle_agent). A tool-capable deployment (e.g. Supabase MCP) would
+  // silently lose that capability in chat if we asked for stream:true, so
+  // this always asks the server for a full response and re-packages it as
+  // a single synthetic SSE chunk -- callers keep consuming the same
+  // AsyncGenerator<SSEEvent> shape, they just get it in one piece instead
+  // of token-by-token.
   const response = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(request),
+    body: JSON.stringify({ ...request, stream: false }),
     signal,
   });
 
@@ -25,37 +36,16 @@ export async function* streamChat(
     throw new Error(`Chat request failed: ${response.status}`);
   }
 
-  const reader = response.body!.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      let currentEvent: string | undefined;
-
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7).trim();
-        } else if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
-          yield { event: currentEvent, data };
-          currentEvent = undefined;
-        } else if (line.trim() === '') {
-          currentEvent = undefined;
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
+  const completion = await response.json();
+  const content = completion.choices?.[0]?.message?.content ?? '';
+  yield {
+    event: undefined,
+    data: JSON.stringify({
+      choices: [{ delta: { content } }],
+      usage: completion.usage,
+      complexity: completion.complexity,
+    }),
+  };
 }
 
 export async function* streamResearch(
