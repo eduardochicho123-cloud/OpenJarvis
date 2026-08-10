@@ -25,6 +25,15 @@ def create_security_middleware() -> Any:
     /v1/speech/transcribe; camera and geolocation stay fully denied
     since nothing in this server uses them.
 
+    CSP adds an explicit media-src allowing "blob:" because the Command
+    Center plays synthesized speech (/v1/speech/synthesize) through an
+    <audio> element backed by a blob: URL. Without it, media-src falls
+    back to default-src's 'self', which does not cover blob: sources --
+    Chrome then refuses to load the audio and reports the generic,
+    misleading "no supported source" / MEDIA_ERR_SRC_NOT_SUPPORTED
+    error, which looks like a codec/format problem but is really CSP
+    silently blocking the resource load before decoding ever starts.
+
     OPTIONS requests are passed through without headers so that
     CORS preflight is not blocked.
     """
@@ -54,7 +63,8 @@ def create_security_middleware() -> Any:
                 "camera=(), microphone=(self), geolocation=()"
             )
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                "default-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "media-src 'self' blob:"
             )
             return response
 
@@ -69,5 +79,7 @@ SECURITY_HEADERS = {
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
-    "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "Content-Security-Policy": (
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval'; media-src 'self' blob:"
+    ),
 }
