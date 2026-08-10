@@ -78,7 +78,18 @@ export default function App() {
 
   // Fetch server info
   useEffect(() => {
-    fetchServerInfo().then(setServerInfo).catch(() => {});
+    fetchServerInfo()
+      .then((info) => {
+        setServerInfo(info);
+        // Cloud-configured deployments (server env vars, no desktop key
+        // storage) have no local Ollama models to auto-select from above,
+        // so selectedModel stays empty forever and the chat input refuses
+        // to send ("Pick a model first") even though the header already
+        // displays the server's default model. Mirror the local-models
+        // auto-select for this case.
+        if (!selectedModel && info?.model) setSelectedModel(info.model);
+      })
+      .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll savings and optionally share to Supabase
