@@ -316,6 +316,11 @@
 
   async function sendMessage(text) {
     if (!text.trim()) return;
+    // Cortar cualquier voz que siga sonando apenas el usuario inicia una
+    // interaccion nueva -- antes esto solo se hacia dentro de speak(),
+    // justo antes de reproducir la respuesta nueva, asi que Jarvis seguia
+    // hablando durante todo el tiempo que tardaba en pensar la siguiente.
+    stopCurrentSpeech();
     appendMessage('user', text);
     messages.push({ role: 'user', content: text });
     $('chat-input').value = '';
@@ -387,6 +392,9 @@
       mediaRecorder.stop();
       return;
     }
+    // Apretar el microfono para hablar de nuevo corta a Jarvis en el acto,
+    // en vez de esperar a que termine de decir lo que estaba diciendo.
+    stopCurrentSpeech();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       appendMessage(
         'assistant',
