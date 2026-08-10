@@ -45,9 +45,19 @@ if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
   # valores como default) para poder ajustarlos despues sin tocar codigo --
   # cambiar la variable en EasyPanel y reiniciar el servicio alcanza, no
   # hace falta un rebuild de imagen (que es lo que tarda los ~4 minutos).
+  # [analytics] enabled=false apaga la telemetria anonima de uso que
+  # OpenJarvis manda a su propio servidor (34.231.106.201.sslip.io) --
+  # ese host no es alcanzable desde esta red, asi que cada intento se
+  # quedaba esperando 15 segundos antes de fallar (visible en los logs
+  # como "error uploading ... connect timeout=15"). No aporta nada aca
+  # (el dato nunca llega) y esos 15 segundos perdidos, si coinciden con
+  # un pedido de chat, contribuyen a la demora percibida.
   cat > "$HOME/.openjarvis/config.toml" <<TOML
 [server]
 model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
+
+[analytics]
+enabled = false
 
 [speech]
 backend = "openai"
