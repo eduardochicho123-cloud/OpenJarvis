@@ -34,12 +34,21 @@ if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
   # (list_tables, varios execute_sql) puede agotar el limite de turnos antes
   # de escribir la respuesta final -- el pedido termina en 200 OK pero con
   # el mensaje vacio.
+  # [intelligence] max_tokens sube de 1024 (default) a 4096 -- gpt-5-nano
+  # narra en texto plano lo que va a hacer ("Voy a consultar la
+  # estructura...") antes de llamar a las herramientas, y con 1024 se
+  # quedaba sin espacio a mitad de esa narracion (respuesta cortada a la
+  # mitad, no vacia). La regla extra del prompt pidiendole que sea directo
+  # ataca la causa; subir el limite es la red de seguridad.
   cat > "$HOME/.openjarvis/config.toml" <<TOML
 [server]
 model = "${OPENJARVIS_DEFAULT_MODEL:-gpt-4o-mini}"
 
 [speech]
 backend = "openai"
+
+[intelligence]
+max_tokens = 4096
 
 [agent]
 max_turns = 24
@@ -51,6 +60,7 @@ Reglas importantes:
 - Antes de decir que no tenes un dato, explora el esquema con list_tables y proba un execute_sql razonable sobre las tablas que parezcan relevantes. Recien despues de intentarlo de verdad decis que no encontraste el dato, citando que tablas revisaste.
 - Los nombres de empresa pueden llegar mal escritos o con variantes (por ejemplo "Incalla", "Inkal", "INKAL S.A.") -- busca coincidencias parecidas en la tabla de empresas en vez de asumir que es una empresa externa desconocida.
 - Responde siempre en espanol, de forma clara y concisa, citando los numeros reales que encontraste en la base de datos.
+- No narres en texto lo que vas a hacer ("voy a consultar...", "ejecutando...") -- llama a las herramientas directamente y recien escribi texto cuando tengas la respuesta final para el usuario.
 """
 
 [tools.mcp]
