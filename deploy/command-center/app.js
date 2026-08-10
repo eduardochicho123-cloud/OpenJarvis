@@ -245,30 +245,34 @@
 
       setOrbState('speaking', 'Hablando...');
 
+      // "No soportado" puede llegar por dos caminos distintos -- el evento
+      // "error" del elemento, o el rechazo de play() -- segun el navegador y
+      // el timing. Los dos casos usan el mismo diagnostico de bytes crudos
+      // para no perder la pista la proxima vez.
+      const describeBlob = async () => {
+        try {
+          const head = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+          const hex = Array.from(head)
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join(' ');
+          const text = (await blob.slice(0, 200).text()).replace(/\s+/g, ' ');
+          return ` hex[${hex}] text[${text.slice(0, 150)}]`;
+        } catch {
+          return '';
+        }
+      };
+
       await new Promise((resolve) => {
         audioEl.onended = resolve;
         audioEl.onerror = async () => {
-          // Code 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) con un blob de tamano
-          // razonable es raro -- puede ser que lo que llego no sea audio de
-          // verdad (un JSON de error disfrazado de audio/mpeg, por ejemplo).
-          // Mirar los primeros bytes en crudo lo confirma sin adivinar.
           const code = audioEl.error ? audioEl.error.code : '?';
-          let preview = '';
-          try {
-            const head = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
-            const hex = Array.from(head)
-              .map((b) => b.toString(16).padStart(2, '0'))
-              .join(' ');
-            const text = (await blob.slice(0, 200).text()).replace(/\s+/g, ' ');
-            preview = ` hex[${hex}] text[${text.slice(0, 150)}]`;
-          } catch {
-            /* el preview es solo diagnostico -- si falla, seguimos igual */
-          }
+          const preview = await describeBlob();
           playError = `audio error (code ${code}, blob ${blob.size}b/${blob.type})${preview}`;
           resolve();
         };
-        audioEl.play().catch((err) => {
-          playError = `${err.name}: ${err.message}`;
+        audioEl.play().catch(async (err) => {
+          const preview = await describeBlob();
+          playError = `${err.name}: ${err.message} (blob ${blob.size}b/${blob.type})${preview}`;
           resolve();
         });
       });
